@@ -21,6 +21,14 @@ on:
           - auto
           - true
           - false
+      target:
+        description: "Which target to run"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux-arm64
 
 permissions:
   contents: write
@@ -36,6 +44,7 @@ concurrency:
 
 jobs:
   build_frontend_dist:
+    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-arm64' }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -72,6 +81,7 @@ jobs:
           compression-level: 0
 
   build_windows:
+    if: ${{ github.event.inputs.target == 'all' }}
     needs: build_frontend_dist
     runs-on: windows-latest
 
@@ -173,6 +183,7 @@ jobs:
           compression-level: 0
 
   build_macos_beta:
+    if: ${{ github.event.inputs.target == 'all' }}
     needs: build_frontend_dist
     runs-on: macos-14
     strategy:
@@ -324,6 +335,7 @@ jobs:
           compression-level: 0
 
   build_linux:
+    if: ${{ github.event.inputs.target == 'all' }}
     needs: build_frontend_dist
     runs-on: ubuntu-22.04
 
@@ -478,6 +490,7 @@ jobs:
           compression-level: 0
 
   build_linux_arm64_console:
+    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-arm64' }}
     needs: build_frontend_dist
     runs-on: ubuntu-22.04
 
@@ -561,8 +574,9 @@ jobs:
           compression-level: 0
 
   release:
+
     needs: [build_windows, build_macos_beta, build_linux, build_linux_arm64_console]
-    if: ${{ needs.build_windows.result == 'success' && needs.build_macos_beta.result == 'success' && needs.build_linux.result == 'success' && needs.build_linux_arm64_console.result == 'success' }}
+    if: ${{ needs.build_linux_arm64_console.result == 'success' }}
     runs-on: ubuntu-22.04
 
     steps:
