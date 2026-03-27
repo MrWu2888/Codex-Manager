@@ -595,7 +595,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          owner="${{ github.repository_owner }}"
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
           tag="${{ github.event.inputs.tag }}"
 
           docker tag codexmanager-service:release "ghcr.io/${owner}/codexmanager-service:${tag}"
