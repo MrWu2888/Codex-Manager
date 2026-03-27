@@ -574,7 +574,6 @@ jobs:
           compression-level: 0
 
   release:
-
     needs: [build_windows, build_macos_beta, build_linux, build_linux_arm64_console]
     if: ${{ always() && needs.build_linux_arm64_console.result == 'success' }}
     runs-on: ubuntu-22.04
@@ -592,7 +591,21 @@ jobs:
           merge-multiple: true
           path: release-assets
 
+      - name: Check docker image archive
+        id: docker_archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f release-assets/codexmanager-docker-images.tar.gz ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Docker image archive found"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Docker image archive not found, docker-related steps will be skipped"
+          fi
+
       - name: Login to GitHub Container Registry
+        if: ${{ steps.docker_archive.outputs.exists == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -600,12 +613,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load docker images
+        if: ${{ steps.docker_archive.outputs.exists == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
           gunzip -c release-assets/codexmanager-docker-images.tar.gz | docker load
 
       - name: Push docker images to GHCR
+        if: ${{ steps.docker_archive.outputs.exists == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -625,7 +640,10 @@ jobs:
           docker push "${web_image}"
 
       - name: List release assets
-        run: find release-assets -type f | sort
+        shell: bash
+        run: |
+          set -euo pipefail
+          find release-assets -type f | sort
 
       - name: Publish GitHub Release
         uses: ./.github/actions/publish-github-release
@@ -634,4 +652,3 @@ jobs:
           ref: ${{ github.event.inputs.ref || 'main' }}
           prerelease-input: ${{ github.event.inputs.prerelease || 'auto' }}
           assets-dir: release-assets
-
