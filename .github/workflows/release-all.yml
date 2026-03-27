@@ -576,7 +576,7 @@ jobs:
   release:
 
     needs: [build_windows, build_macos_beta, build_linux, build_linux_arm64_console]
-    if: ${{ needs.build_linux_arm64_console.result == 'success' }}
+    if: ${{ always() && needs.build_linux_arm64_console.result == 'success' }}
     runs-on: ubuntu-22.04
 
     steps:
