@@ -477,6 +477,86 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
+build_linux_arm64_console:
+    needs: build_frontend_dist
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.ref || 'main' }}
+
+      - name: Setup release environment
+        uses: ./.github/actions/setup-release-env
+        with:
+          rust-target: aarch64-unknown-linux-gnu
+          enable-pnpm-cache: "false"
+          enable-rust-cache: "false"
+
+      - name: Install ARM64 cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+            pkg-config \
+            zip
+
+      - name: Configure cargo linker for ARM64
+        shell: bash
+        run: |
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml <<'EOF'
+          [target.aarch64-unknown-linux-gnu]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+
+      - name: Build service binaries for Linux ARM64
+        env:
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
+        run: |
+          cargo build -p codexmanager-service --release --target aarch64-unknown-linux-gnu
+          cargo build -p codexmanager-web --release --features embedded-ui --target aarch64-unknown-linux-gnu
+          cargo build -p codexmanager-start --release --target aarch64-unknown-linux-gnu
+
+      - name: Stage Linux ARM64 console package
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir="${{ env.CARGO_TARGET_DIR }}/aarch64-unknown-linux-gnu/release"
+          stage_dir="stage/linux-arm64-console"
+          package_dir="${stage_dir}/CodexManager-linux-arm64"
+          mkdir -p "$package_dir"
+
+          cp "$release_dir/codexmanager-service" "$package_dir/"
+          cp "$release_dir/codexmanager-web" "$package_dir/"
+          cp "$release_dir/codexmanager-start" "$package_dir/"
+
+          chmod +x "$package_dir"/codexmanager-*
+
+          if [ -f docker/docker-compose.release.yml ]; then
+            cp docker/docker-compose.release.yml "$package_dir/docker-compose.release.yml"
+          fi
+
+          if [ -f README.md ]; then
+            cp README.md "$package_dir/"
+          fi
+
+          cd "$stage_dir"
+          zip -r "CodexManager-console-linux-arm64.zip" "CodexManager-linux-arm64"
+
+      - name: Upload Linux ARM64 console artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: codexmanager-console-linux-arm64
+          path: stage/linux-arm64-console/CodexManager-console-linux-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+
   release:
     needs: [build_windows, build_macos_beta, build_linux]
     if: ${{ needs.build_windows.result == 'success' && needs.build_macos_beta.result == 'success' && needs.build_linux.result == 'success' }}
