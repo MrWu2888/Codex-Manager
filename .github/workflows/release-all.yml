@@ -477,7 +477,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
-build_linux_arm64_console:
+  build_linux_arm64_console:
     needs: build_frontend_dist
     runs-on: ubuntu-22.04
 
@@ -493,6 +493,9 @@ build_linux_arm64_console:
           rust-target: aarch64-unknown-linux-gnu
           enable-pnpm-cache: "false"
           enable-rust-cache: "false"
+
+      - name: Prepare frontend dist
+        uses: ./.github/actions/prepare-frontend-dist
 
       - name: Install ARM64 cross toolchain
         run: |
@@ -558,8 +561,8 @@ build_linux_arm64_console:
           compression-level: 0
 
   release:
-    needs: [build_windows, build_macos_beta, build_linux]
-    if: ${{ needs.build_windows.result == 'success' && needs.build_macos_beta.result == 'success' && needs.build_linux.result == 'success' }}
+    needs: [build_windows, build_macos_beta, build_linux, build_linux_arm64_console]
+    if: ${{ needs.build_windows.result == 'success' && needs.build_macos_beta.result == 'success' && needs.build_linux.result == 'success' && needs.build_linux_arm64_console.result == 'success' }}
     runs-on: ubuntu-22.04
 
     steps:
