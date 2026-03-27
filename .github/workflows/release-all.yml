@@ -598,11 +598,17 @@ jobs:
           owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
           tag="${{ github.event.inputs.tag }}"
 
-          docker tag codexmanager-service:release "ghcr.io/${owner}/codexmanager-service:${tag}"
-          docker tag codexmanager-web:release "ghcr.io/${owner}/codexmanager-web:${tag}"
+          service_image="ghcr.io/${owner}/codexmanager-service:${tag}"
+          web_image="ghcr.io/${owner}/codexmanager-web:${tag}"
 
-          docker push "ghcr.io/${owner}/codexmanager-service:${tag}"
-          docker push "ghcr.io/${owner}/codexmanager-web:${tag}"
+          echo "Pushing ${service_image}"
+          echo "Pushing ${web_image}"
+
+          docker tag codexmanager-service:release "${service_image}"
+          docker tag codexmanager-web:release "${web_image}"
+
+          docker push "${service_image}"
+          docker push "${web_image}"
 
       - name: List release assets
         run: find release-assets -type f | sort
